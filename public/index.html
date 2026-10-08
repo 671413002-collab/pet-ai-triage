@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pet AI Triage - ระบบคัดกรองอาการและปฐมพยาบาลสัตว์เลี้ยง</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts Prompt & Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Prompt', 'Inter', sans-serif;
+      background-color: #f8fafc;
+    }
+    @keyframes pulse-fast {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.03); }
+    }
+    .pulse-emergency {
+      animation: pulse-fast 1.2s infinite ease-in-out;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-800 antialiased flex flex-col justify-between">
+
+  <!-- Top Navbar -->
+  <header class="w-full bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-30 px-4 py-3 shadow-2xs">
+    <div class="max-w-6xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-2xl bg-teal-500 text-white flex items-center justify-center text-xl shadow-sm">
+          🐾
+        </div>
+        <div>
+          <h1 class="text-base font-bold text-slate-900 leading-tight">Pet AI Triage</h1>
+          <p class="text-[11px] text-slate-500">ระบบคัดกรองอาการและปฐมพยาบาลสัตว์เลี้ยงเบื้องต้น • AI for Thai & Thai LLM</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="openApiKeyModal()" class="text-xs px-3.5 py-1.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 flex items-center gap-1.5 transition cursor-pointer">
+          <svg class="w-3.5 h-3.5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+          <span id="apiKeyStatusText">ตั้งค่า AI For Thai Key</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="max-w-6xl w-full mx-auto px-4 py-6 md:py-8 flex-1">
+    
+    <!-- Title Section -->
+    <div class="text-center max-w-2xl mx-auto mb-8">
+      <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-teal-50 border border-teal-200 text-teal-700 text-xs font-semibold mb-2.5">
+        <span>🩺</span> ประเมินความเร่งด่วนและวิธีปฐมพยาบาลฉุกเฉิน 24 ชม.
+      </div>
+      <h2 class="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">น้องหมาน้องแมวมีอาการอย่างไร?</h2>
+      <p class="text-xs md:text-sm text-slate-500 mt-2">
+        เลือกอาการและระบุสิ่งที่เกิดขึ้น ให้ AI ช่วยประเมินระดับความเสี่ยง แนะนำวิธีดูแลเบื้องต้น และแจ้งเตือนข้อห้ามอันตราย
+      </p>
+    </div>
+
+    <!-- Quick Case Presets (สำหรับพรีเซนต์และทดสอบทันที) -->
+    <div class="mb-6 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-2xs">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-xs font-bold text-slate-700 flex items-center gap-1">
+          <span>⚡</span> ทดลองเคสตัวอย่างด่วน (Demo Presets):
+        </span>
+        <span class="text-[11px] text-slate-400">คลิกเพื่อดูการประเมินทันที</span>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <button onclick="loadPreset('พารา')" class="text-xs p-2 rounded-xl border border-rose-200 bg-rose-50/60 hover:bg-rose-100 text-rose-700 font-medium text-left transition active:scale-95">
+          🚨 เผลอกินยาพารา (วิกฤต)
+        </button>
+        <button onclick="loadPreset('ฉี่ไม่ออก')" class="text-xs p-2 rounded-xl border border-rose-200 bg-rose-50/60 hover:bg-rose-100 text-rose-700 font-medium text-left transition active:scale-95">
+          🚨 แมวเบ่งฉี่ไม่ออก (วิกฤต)
+        </button>
+        <button onclick="loadPreset('ช็อกโกแลต')" class="text-xs p-2 rounded-xl border border-amber-200 bg-amber-50/60 hover:bg-amber-100 text-amber-700 font-medium text-left transition active:scale-95">
+          ⚠️ หมากินช็อกโกแลต (วิกฤต)
+        </button>
+        <button onclick="loadPreset('อาเจียน')" class="text-xs p-2 rounded-xl border border-teal-200 bg-teal-50/60 hover:bg-teal-100 text-teal-700 font-medium text-left transition active:scale-95">
+          🟡 อ้วกและท้องเสีย (เฝ้าระวัง)
+        </button>
+      </div>
+    </div>
+
+    <!-- 2 Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+      <!-- LEFT COLUMN: Symptom Input Form (5 cols) -->
+      <div class="lg:col-span-5 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 flex flex-col gap-4">
+        
+        <!-- Step 1: Pet Type -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">1. ชนิดสัตว์เลี้ยง</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" onclick="selectPetType('สุนัข')" id="btnDog" class="pet-type-btn p-3 rounded-xl border-2 border-teal-500 bg-teal-50/60 text-teal-800 font-semibold text-center text-xs flex flex-col items-center gap-1 transition">
+              <span class="text-xl">🐶</span> สุนัข
+            </button>
+            <button type="button" onclick="selectPetType('แมว')" id="btnCat" class="pet-type-btn p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-medium text-center text-xs flex flex-col items-center gap-1 transition">
+              <span class="text-xl">🐱</span> แมว
+            </button>
+            <button type="button" onclick="selectPetType('สัตว์อื่นๆ')" id="btnOther" class="pet-type-btn p-3 rounded-xl border-2 border-slate-200 hover:border-slate-300 text-slate-600 font-medium text-center text-xs flex flex-col items-center gap-1 transition">
+              <span class="text-xl">🐰</span> อื่นๆ
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 2: Quick Symptoms Multi-select -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">2. อาการที่พบ (เลือกได้หลายข้อ)</label>
+          <div class="flex flex-wrap gap-1.5" id="symptomsChips">
+            <button type="button" onclick="toggleSymptom(this, 'ซึม')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-400 transition cursor-pointer">
+              😴 ซึม ไม่ร่าเริง
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'ไม่กินข้าว')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-400 transition cursor-pointer">
+              🥣 เบื่ออาหาร ไม่กินข้าว
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'อาเจียน')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-400 transition cursor-pointer">
+              🤮 อาเจียน / อ้วก
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'ท้องเสีย')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 hover:border-teal-400 transition cursor-pointer">
+              💩 ท้องเสีย / ถ่ายเหลว
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'หายใจหอบ')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-700 hover:border-rose-400 transition cursor-pointer">
+              🫁 หายใจหอบ / แรง
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'เกร็ง ชัก')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-700 hover:border-rose-400 transition cursor-pointer">
+              ⚡ เกร็ง / ชักกระตุก
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'ฉี่ไม่ออก')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-700 hover:border-rose-400 transition cursor-pointer">
+              🚽 ฉี่ไม่ออก / เบ่งฉี่
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'กินยาพารา')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-700 hover:border-rose-400 transition cursor-pointer">
+              💊 กินยาพารา/ยาคน
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'กินช็อกโกแลต')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-700 hover:border-rose-400 transition cursor-pointer">
+              🍫 กินช็อกโกแลต
+            </button>
+            <button type="button" onclick="toggleSymptom(this, 'ฮีทสโตรก')" class="symptom-chip text-xs px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50/50 text-rose-700 hover:border-rose-400 transition cursor-pointer">
+              ☀️ ตัวร้อนจัด / ฮีทสโตรก
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 3: Duration -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">3. เริ่มมีอาการมานานเท่าไร</label>
+          <select id="durationSelect" class="w-full text-xs px-3 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:border-teal-500 outline-none">
+            <option value="เพิ่งเป็น (ไม่เกิน 6 ชม.)">เพิ่งเป็น (ไม่เกิน 6 ชั่วโมงที่ผ่านมา)</option>
+            <option value="ประมาณ 12-24 ชม.">ประมาณ 12-24 ชั่วโมง (วันนี้)</option>
+            <option value="2-3 วันแล้ว">เป็นมา 2-3 วันแล้ว</option>
+            <option value="เรื้อรังเกิน 1 สัปดาห์">เรื้อรังเกิน 1 สัปดาห์</option>
+          </select>
+        </div>
+
+        <!-- Step 4: Additional Details -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">4. รายละเอียดเพิ่มเติม (ถ้ามี)</label>
+          <textarea id="detailsInput" rows="2" placeholder="เช่น เพิ่งให้กินขนมใหม่, น้ำหนัก 4 กิโลกรัม, อายุ 2 ปี..." class="w-full text-xs p-3 rounded-xl border border-slate-200 bg-slate-50 focus:border-teal-500 outline-none"></textarea>
+        </div>
+
+        <!-- Analyze Button -->
+        <button id="triageBtn" onclick="submitTriage()" class="w-full bg-gradient-to-r from-teal-600 to-emerald-600 hover:from-teal-700 hover:to-emerald-700 active:scale-99 text-white font-semibold py-3 px-4 rounded-xl shadow-md shadow-teal-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm">
+          <span id="triageSpinner" class="hidden w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+          <span id="triageBtnText">🩺 เริ่มคัดกรองอาการ (Analyze Triage)</span>
+        </button>
+
+      </div>
+
+
+      <!-- RIGHT COLUMN: Triage Results & Action Guide (7 cols) -->
+      <div class="lg:col-span-7 bg-white rounded-2xl shadow-sm border border-slate-200/80 p-5 md:p-6 flex flex-col gap-5">
+        
+        <!-- Urgency Alert Banner -->
+        <div id="urgencyBanner" class="rounded-2xl p-4.5 border transition-all bg-emerald-50 border-emerald-200">
+          <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <span id="urgencyPulse" class="w-3.5 h-3.5 rounded-full bg-emerald-500 flex-shrink-0"></span>
+              <div>
+                <span id="urgencyBadge" class="text-xs font-bold uppercase tracking-wider text-emerald-800">
+                  🟢 เฝ้าระวังเบื้องต้น (Mild)
+                </span>
+                <h3 id="resultTitle" class="text-lg md:text-xl font-extrabold text-slate-900 mt-0.5">
+                  การประเมินอาการเบื้องต้นสำหรับ สุนัข
+                </h3>
+              </div>
+            </div>
+            <button onclick="speakTriageAdvice()" class="text-xs text-teal-700 hover:text-teal-900 flex items-center gap-1 font-semibold flex-shrink-0 bg-white/70 px-2.5 py-1.5 rounded-xl border border-slate-200 cursor-pointer shadow-2xs" title="ฟังเสียงคำแนะนำ">
+              <span>🔊</span> ฟังคำแนะนำ
+            </button>
+          </div>
+          <p id="actionSummary" class="text-xs md:text-sm text-slate-700 mt-3 leading-relaxed bg-white/80 p-3 rounded-xl border border-slate-100">
+            อาการเบื้องต้นยังไม่พบสัญญาณอันตรายเฉียบพลัน สามารถดูแลปฐมพยาบาลตามคำแนะนำและเฝ้าดูอาการอย่างใกล้ชิด 24-48 ชม.
+          </p>
+        </div>
+
+        <!-- Explanation Card -->
+        <div class="bg-slate-50 border border-slate-200/70 rounded-xl p-4">
+          <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-1 flex items-center gap-1.5">
+            <span>🔬</span> การวิเคราะห์ทางการแพทย์เบื้องต้น
+          </h4>
+          <p id="resultExplanation" class="text-xs md:text-sm text-slate-600 leading-relaxed">
+            สัตว์เลี้ยงอาจมีความผิดปกติที่ระบบทางเดินอาหาร กล้ามเนื้อ หรือภูมิคุ้มกัน ควรให้ความสำคัญกับการสังเกตพฤติกรรมและการดื่มน้ำ
+          </p>
+        </div>
+
+        <!-- Step-by-Step First Aid -->
+        <div>
+          <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+            <span>🚑</span> ขั้นตอนการปฐมพยาบาลทันที (First-Aid Guide)
+          </h4>
+          <div id="firstAidList" class="space-y-2">
+            <div class="flex items-start gap-2.5 text-xs text-slate-700 bg-teal-50/50 p-2.5 rounded-xl border border-teal-100">
+              <span class="text-teal-600 font-bold">1.</span>
+              <span>จัดให้อยู่ในที่เงียบ อบอุ่น มีอากาศถ่ายเทสะดวกและไม่มีสิ่งรบกวน</span>
+            </div>
+            <div class="flex items-start gap-2.5 text-xs text-slate-700 bg-teal-50/50 p-2.5 rounded-xl border border-teal-100">
+              <span class="text-teal-600 font-bold">2.</span>
+              <span>เตรียมน้ำสะอาดไว้ใกล้ตัว และสังเกตปริมาณการกินน้ำและการขับถ่าย</span>
+            </div>
+            <div class="flex items-start gap-2.5 text-xs text-slate-700 bg-teal-50/50 p-2.5 rounded-xl border border-teal-100">
+              <span class="text-teal-600 font-bold">3.</span>
+              <span>จดบันทึกเวลาที่เริ่มมีอาการ จำนวนครั้ง และถ่ายรูปอุจจาระหรืออาเจียนไว้ให้สัตวแพทย์ดู</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dangerous Don'ts -->
+        <div class="bg-rose-50 border border-rose-200 rounded-xl p-3.5">
+          <h4 class="text-xs font-bold text-rose-800 uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+            <span>⛔</span> ข้อห้ามเด็ดขาด (Dangerous Don'ts)
+          </h4>
+          <div id="dontsList" class="space-y-1.5 text-xs text-rose-700">
+            <p>• ห้ามป้อนยาของคนเด็ดขาด (เช่น พาราเซตามอล แอสไพริน ไอบูโพรเฟน) เพราะเป็นพิษถึงตาย</p>
+            <p>• ห้ามบังคับป้อนอาหารแข็งหรือน้ำหากสัตว์เลี้ยงเริ่มหมดสติหรือหายใจลำบาก</p>
+          </div>
+        </div>
+
+        <!-- Hospital Preparation Checklist -->
+        <div class="border border-slate-200 rounded-xl p-3 bg-white flex items-start gap-2.5 text-xs text-slate-600">
+          <span class="text-base">🏥</span>
+          <div>
+            <strong class="text-slate-800 block mb-0.5">สิ่งที่ต้องเตรียมเมื่อพาไปคลินิก / รพ.สัตว์:</strong>
+            สมุดวัคซีน, รูปถ่ายหรือตัวอย่างสิ่งที่กิน/ขับถ่าย, กรงหรือตะกร้าที่มีผ้ารอง, และโทรแจ้งโรงพยาบาลล่วงหน้าระหว่างเดินทาง
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Modal ตั้งค่า API Key -->
+  <div id="apiKeyModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl border border-slate-100">
+      <div class="flex items-center justify-between mb-3">
+        <h3 class="text-base font-bold text-slate-800 flex items-center gap-2">
+          <span>🔑</span> ตั้งค่า AI for Thai / Thai LLM Key
+        </h3>
+        <button onclick="closeApiKeyModal()" class="text-slate-400 hover:text-slate-600 text-lg cursor-pointer">&times;</button>
+      </div>
+      <p class="text-xs text-slate-600 leading-relaxed mb-4">
+        สามารถนำ <strong>API Key</strong> จาก <a href="https://aiforthai.in.th" target="_blank" class="text-teal-600 underline font-semibold">aiforthai.in.th</a> มาเชื่อมต่อเพื่อเพิ่มพลังการวิเคราะห์ผ่านโมดูล TextQA / Thai LLM ได้เลย (หากไม่มี Key ระบบ Triage Engine ในตัวก็ทำงานได้สมบูรณ์ 100%)
+      </p>
+      <div class="mb-4">
+        <label class="block text-xs font-semibold text-slate-700 mb-1.5">AIFORTHAI API Key</label>
+        <input type="password" id="apiKeyInput" placeholder="วาง API Key ที่นี่..." class="w-full text-xs md:text-sm px-3.5 py-2.5 rounded-xl border border-slate-300 focus:border-teal-500 focus:ring-2 focus:ring-teal-100 outline-none">
+      </div>
+      <div class="flex items-center justify-end gap-2.5">
+        <button onclick="closeApiKeyModal()" class="text-xs px-4 py-2 rounded-xl text-slate-600 hover:bg-slate-100 cursor-pointer">ยกเลิก</button>
+        <button onclick="saveApiKey()" class="text-xs px-4 py-2 rounded-xl bg-teal-600 hover:bg-teal-700 text-white font-semibold cursor-pointer">บันทึก Key</button>
+      </div>
+    </div>
+  </div>
+
+  <footer class="w-full text-center py-4 text-xs text-slate-400 border-t border-slate-200 mt-6">
+    Pet AI Triage • พัฒนาขึ้นด้วย AI for Thai (TextQA & Thai LLM) • สำหรับประเมินเบื้องต้น มิใช่การวินิจฉัยโรคขั้นสุดท้าย
+  </footer>
+
+  <!-- Scripts -->
+  <script>
+    let selectedPetType = "สุนัข";
+    let selectedSymptoms = [];
+    let currentTriageData = null;
+
+    window.addEventListener("DOMContentLoaded", () => {
+      fetchStatus();
+    });
+
+    async function fetchStatus() {
+      try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        const statusText = document.getElementById("apiKeyStatusText");
+        if (data.has_api_key) {
+          statusText.textContent = `AIFT Key: ${data.api_key_masked}`;
+          statusText.classList.add("text-teal-600");
+        } else {
+          statusText.textContent = "โหมด Triage Engine (คลิกใส่ Key)";
+        }
+      } catch (e) {}
+    }
+
+    function openApiKeyModal() { document.getElementById("apiKeyModal").classList.remove("hidden"); }
+    function closeApiKeyModal() { document.getElementById("apiKeyModal").classList.add("hidden"); }
+
+    async function saveApiKey() {
+      const key = document.getElementById("apiKeyInput").value.trim();
+      const res = await fetch("/api/save-key", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ api_key: key })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("บันทึก API Key เรียบร้อยแล้ว!");
+        closeApiKeyModal();
+        fetchStatus();
+      }
+    }
+
+    function selectPetType(type) {
+      selectedPetType = type;
+      const btnDog = document.getElementById("btnDog");
+      const btnCat = document.getElementById("btnCat");
+      const btnOther = document.getElementById("btnOther");
+
+      [btnDog, btnCat, btnOther].forEach(btn => {
+        btn.classList.remove("border-teal-500", "bg-teal-50/60", "text-teal-800", "font-semibold");
+        btn.classList.add("border-slate-200", "text-slate-600");
+      });
+
+      if (type === "สุนัข") {
+        btnDog.classList.add("border-teal-500", "bg-teal-50/60", "text-teal-800", "font-semibold");
+      } else if (type === "แมว") {
+        btnCat.classList.add("border-teal-500", "bg-teal-50/60", "text-teal-800", "font-semibold");
+      } else {
+        btnOther.classList.add("border-teal-500", "bg-teal-50/60", "text-teal-800", "font-semibold");
+      }
+    }
+
+    function toggleSymptom(btn, symptomName) {
+      if (selectedSymptoms.includes(symptomName)) {
+        selectedSymptoms = selectedSymptoms.filter(s => s !== symptomName);
+        btn.classList.remove("border-teal-500", "bg-teal-100", "text-teal-900", "font-semibold");
+        btn.classList.add("border-slate-200", "bg-slate-50", "text-slate-700");
+      } else {
+        selectedSymptoms.push(symptomName);
+        btn.classList.remove("border-slate-200", "bg-slate-50", "text-slate-700");
+        btn.classList.add("border-teal-500", "bg-teal-100", "text-teal-900", "font-semibold");
+      }
+    }
+
+    function loadPreset(presetKey) {
+      // Reset symptoms
+      document.querySelectorAll(".symptom-chip").forEach(btn => {
+        btn.classList.remove("border-teal-500", "bg-teal-100", "text-teal-900", "font-semibold");
+        btn.classList.add("border-slate-200", "bg-slate-50", "text-slate-700");
+      });
+      selectedSymptoms = [];
+
+      if (presetKey === "พารา") {
+        selectPetType("แมว");
+        selectedSymptoms = ["กินยาพารา", "ซึม", "หายใจหอบ"];
+        document.getElementById("detailsInput").value = "เผลอกินยาพาราเซตามอลของคนเข้าไปประมาณ 1 เม็ด ตอนนี้เหงือกซีด หายใจเร็ว";
+      } else if (presetKey === "ฉี่ไม่ออก") {
+        selectPetType("แมว");
+        selectedSymptoms = ["ฉี่ไม่ออก", "ซึม"];
+        document.getElementById("detailsInput").value = "แมวตัวผู้วิ่งเข้ากระบะทรายบ่อยมาก เบ่งฉี่แล้วร้องเจ็บแต่ไม่มีฉี่ออกมาเลย 1 วันแล้ว";
+      } else if (presetKey === "ช็อกโกแลต") {
+        selectPetType("สุนัข");
+        selectedSymptoms = ["กินช็อกโกแลต", "อาเจียน", "หายใจหอบ"];
+        document.getElementById("detailsInput").value = "สุนัขแอบกินดาร์กช็อกโกแลตไปครึ่งแท่ง หัวใจเต้นเร็ว กระวนกระวาย";
+      } else if (presetKey === "อาเจียน") {
+        selectPetType("สุนัข");
+        selectedSymptoms = ["อาเจียน", "ท้องเสีย", "ซึม"];
+        document.getElementById("detailsInput").value = "อ้วกเป็นฟองสีเหลือง 2 ครั้ง ถ่ายเหลว แต่ยังพอกินน้ำได้บ้าง";
+      }
+
+      // Highlight active chips
+      document.querySelectorAll(".symptom-chip").forEach(btn => {
+        selectedSymptoms.forEach(s => {
+          if (btn.textContent.includes(s)) {
+            btn.classList.add("border-teal-500", "bg-teal-100", "text-teal-900", "font-semibold");
+          }
+        });
+      });
+
+      submitTriage();
+    }
+
+    async function submitTriage() {
+      const btn = document.getElementById("triageBtn");
+      const btnText = document.getElementById("triageBtnText");
+      const spinner = document.getElementById("triageSpinner");
+      const details = document.getElementById("detailsInput").value.trim();
+      const duration = document.getElementById("durationSelect").value;
+
+      btn.disabled = true;
+      spinner.classList.remove("hidden");
+      btnText.textContent = "AI กำลังประเมินระดับความเสี่ยง...";
+
+      try {
+        const res = await fetch("/api/triage", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            pet_type: selectedPetType,
+            symptoms: selectedSymptoms,
+            details: details,
+            duration: duration
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          updateUI(data.data);
+        } else {
+          alert("เกิดข้อผิดพลาด: " + data.error);
+        }
+      } catch (err) {
+        alert("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้: " + err.message);
+      } finally {
+        btn.disabled = false;
+        spinner.classList.add("hidden");
+        btnText.textContent = "🩺 เริ่มคัดกรองอาการ (Analyze Triage)";
+      }
+    }
+
+    function updateUI(res) {
+      currentTriageData = res;
+      const banner = document.getElementById("urgencyBanner");
+      const pulse = document.getElementById("urgencyPulse");
+      const badge = document.getElementById("urgencyBadge");
+
+      // Reset classes
+      banner.className = "rounded-2xl p-4.5 border transition-all";
+      pulse.className = "w-3.5 h-3.5 rounded-full flex-shrink-0";
+
+      if (res.urgency === "critical") {
+        banner.classList.add("bg-rose-50", "border-rose-300", "shadow-sm");
+        pulse.classList.add("bg-rose-600", "pulse-emergency");
+        badge.className = "text-xs font-bold uppercase tracking-wider text-rose-700";
+      } else if (res.urgency === "urgent") {
+        banner.classList.add("bg-amber-50", "border-amber-300");
+        pulse.classList.add("bg-amber-500");
+        badge.className = "text-xs font-bold uppercase tracking-wider text-amber-700";
+      } else {
+        banner.classList.add("bg-emerald-50", "border-emerald-200");
+        pulse.classList.add("bg-emerald-500");
+        badge.className = "text-xs font-bold uppercase tracking-wider text-emerald-800";
+      }
+
+      badge.textContent = res.urgency_label;
+      document.getElementById("resultTitle").textContent = res.title;
+      document.getElementById("actionSummary").textContent = res.action_summary;
+      document.getElementById("resultExplanation").textContent = res.explanation;
+
+      // First Aid List
+      const firstAidContainer = document.getElementById("firstAidList");
+      firstAidContainer.innerHTML = "";
+      res.first_aid.forEach((step, idx) => {
+        const div = document.createElement("div");
+        div.className = "flex items-start gap-2.5 text-xs text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-200";
+        div.innerHTML = `<span class="text-teal-600 font-bold">${idx + 1}.</span> <span>${step}</span>`;
+        firstAidContainer.appendChild(div);
+      });
+
+      // Donts List
+      const dontsContainer = document.getElementById("dontsList");
+      dontsContainer.innerHTML = "";
+      res.donts.forEach(item => {
+        const p = document.createElement("p");
+        p.textContent = item.startsWith("•") || item.startsWith("⚠️") ? item : `• ${item}`;
+        dontsContainer.appendChild(p);
+      });
+    }
+
+    function speakTriageAdvice() {
+      if (!currentTriageData) return;
+      if ('speechSynthesis' in window) {
+        const text = `${currentTriageData.urgency_label} ${currentTriageData.title} ${currentTriageData.action_summary}`;
+        const utter = new SpeechSynthesisUtterance(text);
+        utter.lang = 'th-TH';
+        utter.rate = 1.0;
+        window.speechSynthesis.speak(utter);
+      } else {
+        alert("เบราว์เซอร์ของคุณไม่รองรับการสังเคราะห์เสียง");
+      }
+    }
+  </script>
+</body>
+</html>

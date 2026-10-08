@@ -1,0 +1,4 @@
+# Pet AI Triage & First-Aid Assistant Dependencies
+# AI for Thai Python SDK (v1.3.0+)
+aift>=1.3.0
+requests>=2.31.0
